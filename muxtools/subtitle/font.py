@@ -108,7 +108,7 @@ def collect_fonts(
         else:
             fontname = _get_fontname(query.font_face)
             fontpath = Path(query.font_face.font_file.filename)
-            outpath = get_workdir() / f"{clean_name(fontname)}{fontpath.suffix}"
+            outpath = get_workdir() / f"{clean_name(fontname).upper()}{fontpath.suffix.lower()}"
             family_name = query.font_face.get_best_family_name().value
 
             if isinstance(query.font_face, VariableFontFace):
