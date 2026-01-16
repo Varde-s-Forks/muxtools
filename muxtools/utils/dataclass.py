@@ -33,6 +33,30 @@ def fraction_hook(dct: dict[str, Any]) -> dict[str, Any]:
     return dct
 
 
+def kwargs_to_cli_args(**kwargs) -> list[str]:
+    args = list[str]()
+
+    for k, v in kwargs.items():
+        prefix = "--"
+        keep_underscores = False
+
+        if k.endswith("_"):
+            keep_underscores = True
+            k = k[:-1]
+        if k.startswith("_"):
+            prefix = "-"
+            k = k[1:]
+        args.append(f"{prefix}{k.replace('_', '-') if not keep_underscores else k}")
+        if not isinstance(v, str):
+            args.append(str(v))
+        else:
+            if len(v) == 0:
+                continue
+            if stripped := v.strip():
+                args.append(stripped)
+    return args
+
+
 class CLIKwargs(ABC):
     """
     This is an abstract class to enable the use of (pydantic) dataclass kwargs for custom cli args.
@@ -67,6 +91,8 @@ class CLIKwargs(ABC):
     # all of them return ['-vbr', '--bitrate', '192']
     ```
     """
+
+    __custom_args_dict: dict[str, Any] | None = None
 
     def get_process_affinity(self) -> bool | list[int] | None:
         if not hasattr(self, "affinity"):
@@ -128,16 +154,38 @@ class CLIKwargs(ABC):
 
         return join(new_args)
 
-    def get_custom_args(self) -> list[str]:
+    def get_custom_args_dict(self) -> dict[str, Any]:
+        if self.__custom_args_dict is not None:
+            return self.__custom_args_dict
+
         init_args: dict[str, Any] | None = getattr(self, "__pydantic_fields__", None)
         if not init_args:
-            return []
+            return dict()
 
-        args = list[str]()
+        filtered = dict[str, Any]()
         attributes = vars(self)
         init_keys = list(init_args.keys())
 
         for k, v in attributes.items():
+            if k in init_keys or k in attribute_blacklist:
+                continue
+            if not any([isinstance(v, str), isinstance(v, int), isinstance(v, float)]):
+                continue
+
+            filtered.update({k: v})
+
+        self.__custom_args_dict = filtered
+        return self.__custom_args_dict
+
+    def update_custom_args(self, **kwargs):
+        if self.__custom_args_dict is None:
+            self.get_custom_args_dict()
+
+        self.__custom_args_dict.update(**kwargs)
+
+    def get_custom_args(self) -> list[str]:
+        args = list[str]()
+        for k, v in self.get_custom_args_dict().items():
             if k == "append":
                 if isinstance(v, list):
                     args.extend([str(x) for x in v])
@@ -152,24 +200,6 @@ class CLIKwargs(ABC):
                     raise error("Append is not a string, list of strings or dict!", self)
                 continue
 
-            if not any([isinstance(v, str), isinstance(v, int), isinstance(v, float)]):
-                continue
-            if k in init_keys or k in attribute_blacklist:
-                continue
+            args.extend(kwargs_to_cli_args(**{k: v}))
 
-            prefix = "--"
-            keep_underscores = False
-
-            if k.endswith("_"):
-                keep_underscores = True
-                k = k[:-1]
-            if k.startswith("_"):
-                prefix = "-"
-                k = k[1:]
-            args.append(f"{prefix}{k.replace('_', '-') if not keep_underscores else k}")
-            if not isinstance(v, str):
-                args.append(str(v))
-            else:
-                if stripped := v.strip():
-                    args.append(stripped)
         return args
