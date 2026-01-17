@@ -88,7 +88,7 @@ class TmdbConfig:
     :param write_summary:       Writes the series summary/synopsis to the `SUMMARY` mkv tag if True
     :param write_synopsis:      Writes the individual episode synopsis to the `SYNOPSIS` mkv tag if True
     :param replace_spaces:      Replaces spaces in titles with dots if True and with whatever string you passed if a string.
-    :param title_sanitization:  A dictionary of characters to replace in titles. Defaults to removing `<>:"/\|?*` characters.
+    :param title_sanitization:  A dictionary of characters to replace in titles. Defaults to removing `<>:"/\\|?*` characters.
     """
 
     id: int
