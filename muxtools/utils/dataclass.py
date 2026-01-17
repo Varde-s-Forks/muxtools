@@ -123,7 +123,7 @@ class CLIKwargs(ABC):
 
     def get_mediainfo_settings(self, args: list[str], skip_first: bool = True) -> str:
         to_delete = [it.casefold() for it in ["-hide_banner", "-"]]
-        to_delete_with_next = [it.casefold() for it in ["-map", "-i", "-o", "-c:a", "-c:v", "--csv", "--output", "--progress"]]
+        to_delete_with_next = [it.casefold() for it in ["-map", "-i", "-o", "-c:a", "-c:v", "--csv", "--input", "--output", "--progress"]]
 
         new_args = list[str]()
         skip_next = False
