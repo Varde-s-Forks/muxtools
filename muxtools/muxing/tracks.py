@@ -157,7 +157,22 @@ class VideoTrack(_track):
             else:
                 croplist = list[int](crop)
             args.extend(["--cropping", f"0:{croplist[0]},{croplist[1]},{croplist[2]},{croplist[3]}"])
-        super().__init__(ensure_path(file, self), TrackType.VIDEO, name, lang, default, forced, delay, args, tags)
+
+        # Check for SAR in bitstream and get new display-width / height params for mkvmerge
+        if "--display-dimensions" not in args and "display_dimensions" not in kwargs:
+            parsed = ParsedFile.from_file(file, self, False)
+            video = parsed.find_tracks(type=TrackType.VIDEO, relative_id=0, caller=self)
+            if not video:
+                raise error(f"File '{file.name}' does not have a video track!", self)
+            if not video[0].raw_ffprobe.width or not video[0].raw_ffprobe.height:
+                raise error(f"Video track 0 in file '{file.name}' does not have valid dimensions.", self)
+
+            if video[0].raw_ffprobe.sample_aspect_ratio:
+                if (sar_fraction := Fraction(str(video[0].raw_ffprobe.sample_aspect_ratio).replace(":", "/"))) != 1:
+                    new_display_sizes = sar_fraction * video[0].raw_ffprobe.width / video[0].raw_ffprobe.height
+                    kwargs.update(display_dimensions=f"0:{new_display_sizes.numerator}x{new_display_sizes.denominator}")
+
+        super().__init__(file, TrackType.VIDEO, name, lang, default, forced, delay, args, tags, **kwargs)
 
 
 class AudioTrack(_track):
