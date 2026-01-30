@@ -31,7 +31,7 @@ class MuxingFile(FileMixin):
         super().__init__(ensure_path(file, self), container_delay, source, tags)
 
     @abstractmethod
-    def to_track(self, *args) -> _track: ...
+    def to_track(self, *args, **kwargs) -> _track: ...
 
 
 class VideoFile(MuxingFile):
@@ -45,13 +45,14 @@ class VideoFile(MuxingFile):
         crop: int | tuple[int, int] | tuple[int, int, int, int] | None = None,
         args: list[str] = [],
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> VideoTrack:
         """
         :param timecode_file:       Pass a path for proper vfr playback if needed.
         :param crop:                Container based cropping with (horizontal, vertical) or (left, top, right, bottom).
                                     Will crop the same on all sides if passed a single integer.
         """
-        return VideoTrack(self.file, name, lang, default, forced, self.container_delay, timecode_file, crop, args, tags or self.tags)
+        return VideoTrack(self.file, name, lang, default, forced, self.container_delay, timecode_file, crop, args, tags or self.tags, **kwargs)
 
 
 class AudioFile(MuxingFile):
@@ -81,8 +82,9 @@ class AudioFile(MuxingFile):
         forced: bool = False,
         args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> AudioTrack:
-        return AudioTrack(self.file, name, lang, default, forced, self.container_delay, args, tags or self.tags)
+        return AudioTrack(self.file, name, lang, default, forced, self.container_delay, args, tags or self.tags, **kwargs)
 
     def get_containerinfo(self) -> ContainerInfo:
         if not self.container:

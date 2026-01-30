@@ -1,4 +1,6 @@
 from pathlib import Path
+from typing import Any
+from fractions import Fraction
 from shlex import split as split_args
 
 from ..utils.files import make_output, create_tags_xml
@@ -7,6 +9,8 @@ from ..utils.types import PathLike, TrackType, FileMixin
 from ..utils.files import ensure_path_exists, ensure_path
 from ..utils.probe import ParsedFile
 from ..utils.language_util import standardize_tag
+from ..utils.dataclass import kwargs_to_cli_args
+from ..utils.log import error
 from .token_handling import apply_dynamic_tokens
 
 # fmt: off
@@ -28,7 +32,7 @@ class _track:
     name: str
     lang: str
     delay: int
-    args: list[str] | None
+    args: list[str]
     tags: dict[str, str] | None
 
     def __init__(
@@ -42,6 +46,7 @@ class _track:
         delay: int = 0,
         args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
         """
         :param file:        Filepath as string or Path object
@@ -51,6 +56,10 @@ class _track:
         :param default:     Default flag
         :param forced:      Forced flag
         :param delay:       Container delay of track in ms
+        :param args:        Custom parameters as a list of strings to be applied to the track.
+        :param tags:        Custom tags to be applied to the track.
+        :param kwargs:      Any other custom parameters to be added to the track.\n
+                            This follows the same patterns as the [dynamic dataclasses](https://muxtools.vodes.pw/guide/dynamic-dataclasses/).
         """
         self.file = ensure_path_exists(file, self)
         self.default = default
@@ -59,8 +68,10 @@ class _track:
         self.delay = file.container_delay if isinstance(file, FileMixin) else delay
         self.lang = lang
         self.type = type if isinstance(type, TrackType) else (TrackType(type) if isinstance(type, int) else TrackType[type.upper()])
-        self.args = args
+        self.args = args or []
         self.tags = tags
+
+        self.args.extend(kwargs_to_cli_args(**kwargs))
 
     def mkvmerge_args(self) -> list[str]:
         filepath = str(self.file.resolve())
@@ -130,9 +141,12 @@ class VideoTrack(_track):
         delay: int = 0,
         timecode_file: PathLike | GlobSearch | None = None,
         crop: int | tuple[int, int] | tuple[int, int, int, int] | None = None,
-        args: list[str] = [],
+        args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
+        file = ensure_path(file, self)
+        args = args or []
         if timecode_file is not None:
             args.extend(["--timestamps", f"0:{ensure_path_exists(timecode_file, self).resolve()}"])
         if crop:
@@ -161,8 +175,9 @@ class AudioTrack(_track):
         delay: int = 0,
         args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(ensure_path(file, self), TrackType.AUDIO, name, lang, default, forced, delay, args, tags)
+        super().__init__(ensure_path(file, self), TrackType.AUDIO, name, lang, default, forced, delay, args, tags, **kwargs)
 
 
 class Attachment(_track):
@@ -192,8 +207,9 @@ class SubTrack(_track):
         delay: int = 0,
         args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> None:
-        super().__init__(ensure_path(file, self), TrackType.SUB, name, lang, default, forced, delay, args, tags)
+        super().__init__(ensure_path(file, self), TrackType.SUB, name, lang, default, forced, delay, args, tags, **kwargs)
 
 
 class Premux(_track):

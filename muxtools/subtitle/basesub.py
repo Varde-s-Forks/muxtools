@@ -151,8 +151,9 @@ class BaseSubFile(ABC, MuxingFile):
         forced: bool = False,
         args: list[str] | None = None,
         tags: dict[str, str] | None = None,
+        **kwargs: Any,
     ) -> SubTrack:
-        return SubTrack(self.file, name, lang, default, forced, self.container_delay, args, tags or self.tags)
+        return SubTrack(self.file, name, lang, default, forced, self.container_delay, args, tags or self.tags, **kwargs)
 
     def _read_doc(self, file: PathLike | None = None) -> Document:
         with open(self.file if not file else file, "r", encoding=self.encoding) as reader:
