@@ -132,6 +132,7 @@ def subset_fonts(
     subset_additional_glyphs_parsed = _parse_unicode_chars(additional_glyphs)
 
     fonts: dict[ABCFontFace, _FontData] = {}
+    style_faces: dict[tuple[SubFile, str, int, bool], ABCFontFace] = {}
 
     for sub in subs:
         doc = AssDocument(sub._read_doc())
@@ -144,6 +145,8 @@ def subset_fonts(
                 danger(f"Font '{style.fontname}' was not found! Did you run collect_fonts?", subset_fonts)
 
             else:
+                style_faces[(sub, style.fontname.casefold(), style.weight, style.italic)] = query.font_face
+
                 if fonts.get(query.font_face) is None:
                     fonts[query.font_face] = {
                         "usage": set(),
@@ -300,8 +303,12 @@ def subset_fonts(
                             modified = True
 
             for style in doc.styles:
-                if style.fontname in font_replacements:
-                    style.fontname = font_replacements[style.fontname]
+                style_key = (sub, style.fontname.casefold(), 700 if style.bold else 400, style.italic)
+                font_face = style_faces.get(style_key)
+                replacement = fonts[font_face]["names_hashed"].get(style.fontname) if font_face is not None else font_replacements.get(style.fontname)
+
+                if replacement:
+                    style.fontname = replacement
                     modified = True
 
             if modified:
